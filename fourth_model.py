@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 from skimage.feature import hog, local_binary_pattern
+from skimage.filters import sobel
+from skimage.segmentation import felzenszwalb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix
@@ -13,20 +15,30 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def segment_image(image):
+def edge_based_segmentation(image):
     """
-    Segment the image using binary + Otsu's method.
+    Perform edge-based segmentation on the image.
     """
-    # Convert to grayscale if needed
+    # Convert image to grayscale if not already
     if len(image.shape) > 2:
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray_image = image
 
-    # Apply binary + Otsu's thresholding
-    _, segmented_image = cv2.threshold(gray_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Apply edge detection (e.g., Sobel)
+    edges = sobel(gray_image)
+
+    # Perform segmentation based on edges (e.g., Felzenszwalb)
+    segments = felzenszwalb(edges, scale=100, sigma=0.5, min_size=50)
+
+    # Create segmented image
+    segmented_image = np.zeros_like(image, dtype=np.float32)
+    for seg_val in np.unique(segments):
+        segment_mean = np.mean(image[segments == seg_val], axis=0)
+        segmented_image[segments == seg_val] = segment_mean
 
     return segmented_image
+
 
 def extract_hog_features(image):
     """
@@ -64,7 +76,7 @@ def preprocess_images(image_folder):
                 if image_file.endswith(".jpg"):
                     image_path = os.path.join(emotion_path, image_file)
                     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                    image =segment_image(image)
+                    image = edge_based_segmentation(image)
                     hog_features = extract_hog_features(image)
                     lbp_features = extract_lbp_features(image)
                     combined_features = np.hstack((hog_features, lbp_features))

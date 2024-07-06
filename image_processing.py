@@ -86,10 +86,10 @@ def process_images_in_folder(emotion_folder, save_folder, limit=1000):
 
 
 # Path to the folder containing emotion images
-emotion_images_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\augmented_img"
+emotion_images_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\augmented_img2"
 
 # Path to the folder where processed images will be saved
-save_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\processed_img"
+save_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\processed_img2"
 
 # Create the save folder if it doesn't exist
 os.makedirs(save_folder, exist_ok=True)

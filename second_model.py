@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 from skimage.feature import hog, local_binary_pattern
+from skimage.filters import sobel
+from skimage.segmentation import felzenszwalb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix
@@ -13,29 +15,30 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def segment_image(image):
+def edge_based_segmentation(image):
     """
-    Segment the image using binary + Otsu's method.
+    Perform edge-based segmentation on the image.
     """
-    # Convert to grayscale if needed
+    # Convert image to grayscale if not already
     if len(image.shape) > 2:
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray_image = image
 
-    # Apply binary + Otsu's thresholding
-    _, segmented_image = cv2.threshold(gray_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Apply edge detection (e.g., Sobel)
+    edges = cv2.Canny(gray_image, 100, 200)
+
+    # Perform segmentation based on edges (e.g., Felzenszwalb)
+    segments = felzenszwalb(edges, scale=100, sigma=0.5, min_size=50)
+
+    # Create segmented image
+    segmented_image = np.zeros_like(image, dtype=np.float32)
+    for seg_val in np.unique(segments):
+        segment_mean = np.mean(image[segments == seg_val], axis=0)
+        segmented_image[segments == seg_val] = segment_mean
 
     return segmented_image
 
-def extract_hog_features(image):
-    """
-    Extract Histogram of Oriented Gradients (HOG) features from an image.
-    """
-    resized_image = cv2.resize(image, (196, 196))  # Resize image to 64x64
-    features, hog_image = hog(resized_image, orientations=9, pixels_per_cell=(28, 28),
-                              cells_per_block=(2, 2), block_norm='L2-Hys', visualize=True)
-    return features
 
 def extract_lbp_features(image):
     """
@@ -64,11 +67,9 @@ def preprocess_images(image_folder):
                 if image_file.endswith(".jpg"):
                     image_path = os.path.join(emotion_path, image_file)
                     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                    image =segment_image(image)
-                    hog_features = extract_hog_features(image)
+                    image = edge_based_segmentation(image)
                     lbp_features = extract_lbp_features(image)
-                    combined_features = np.hstack((hog_features, lbp_features))
-                    images.append(combined_features)
+                    images.append(lbp_features)
                     labels.append(emotion)
 
     return np.array(images), np.array(labels)
@@ -130,7 +131,7 @@ loss, accuracy = model.evaluate(X_test_all, y_test_all)
 print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
 # Save the model
-model.save("nn_hog_lbp_emotion_model.h5")
+model.save("nn_edge_lbp_emotion_model.h5")
 
 # Generate predictions for the test set
 y_pred = model.predict(X_test_all)

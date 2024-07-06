@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 # Function to perform image augmentation for a single emotion folder
-def augment_emotion_images(emotion_folder, save_path, target_count=500):
+def augment_emotion_images(emotion_folder, save_path, target_count=1000):
     # Define the ImageDataGenerator with desired augmentations
     datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         rotation_range=15,
@@ -53,7 +53,7 @@ def augment_emotion_images(emotion_folder, save_path, target_count=500):
 emotion_images_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\preprocessed_img"
 
 # Path to the folder where augmented images will be saved
-save_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\augmented_img"
+save_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\augmented_img2"
 
 # Create the save folder if it doesn't exist
 os.makedirs(save_folder, exist_ok=True)

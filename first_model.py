@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 from skimage.feature import hog, local_binary_pattern
+from skimage.filters import sobel
+from skimage.segmentation import felzenszwalb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix
@@ -28,6 +30,7 @@ def segment_image(image):
 
     return segmented_image
 
+
 def extract_hog_features(image):
     """
     Extract Histogram of Oriented Gradients (HOG) features from an image.
@@ -37,18 +40,6 @@ def extract_hog_features(image):
                               cells_per_block=(2, 2), block_norm='L2-Hys', visualize=True)
     return features
 
-def extract_lbp_features(image):
-    """
-    Extract Local Binary Pattern (LBP) features from an image.
-    """
-    resized_image = cv2.resize(image, (196, 196))  # Resize image to 64x64
-    lbp = local_binary_pattern(resized_image, P=8, R=1, method='uniform')
-    (hist, _) = np.histogram(lbp.ravel(),
-                             bins=np.arange(0, 27),
-                             range=(0, 26))
-    hist = hist.astype("float")
-    hist /= (hist.sum() + 1e-6)
-    return hist
 
 def preprocess_images(image_folder):
     """
@@ -64,11 +55,9 @@ def preprocess_images(image_folder):
                 if image_file.endswith(".jpg"):
                     image_path = os.path.join(emotion_path, image_file)
                     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                    image =segment_image(image)
+                    image = segment_image(image)
                     hog_features = extract_hog_features(image)
-                    lbp_features = extract_lbp_features(image)
-                    combined_features = np.hstack((hog_features, lbp_features))
-                    images.append(combined_features)
+                    images.append(hog_features)
                     labels.append(emotion)
 
     return np.array(images), np.array(labels)
@@ -123,14 +112,14 @@ model = Sequential([
 model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Train the model
-history = model.fit(X_train_all, y_train_all, epochs=50, batch_size=32, validation_data=(X_test_all, y_test_all), verbose=1)
+history = model.fit(X_train_all, y_train_all, epochs=10, batch_size=32, validation_data=(X_test_all, y_test_all), verbose=1)
 
 # Evaluate the model
 loss, accuracy = model.evaluate(X_test_all, y_test_all)
 print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
 # Save the model
-model.save("nn_hog_lbp_emotion_model.h5")
+model.save("thresholding_hog_emotion_model.h5")
 
 # Generate predictions for the test set
 y_pred = model.predict(X_test_all)
