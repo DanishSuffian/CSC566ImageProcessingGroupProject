@@ -1,53 +1,56 @@
 import cv2
 import os
 import numpy as np
+import tensorflow as tf
 
 
 # Function to perform image augmentation for a single emotion folder
-def augment_emotion_images(emotion_folder, save_path, num_augmentations=1):
-    # Loop through each image in the emotion folder
+def augment_emotion_images(emotion_folder, save_path, target_count=500):
+    # Define the ImageDataGenerator with desired augmentations
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rotation_range=15,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        horizontal_flip=True,
+        brightness_range=[0.8, 1.2]
+    )
+
+    # Load images from the emotion folder
+    images = []
+    target_size = (224, 224)  # Define the target size for resizing images
     for image_file in os.listdir(emotion_folder):
         if image_file.endswith(".jpg"):  # Assuming images are in JPG format
             image_path = os.path.join(emotion_folder, image_file)
-            # Load the image
             image = cv2.imread(image_path)
-
-            # Check if the image was loaded successfully
-            if image is None:
+            if image is not None:
+                # Ensure the image is resized properly
+                image = cv2.resize(image, target_size)  # Resize image
+                images.append(image)
+            else:
                 print(f"Error loading image: {image_path}")
-                continue
 
-            # Get the image name without extension
-            image_name = os.path.splitext(image_file)[0]
+    if len(images) == 0:
+        print(f"No valid images found in {emotion_folder}")
+        return
 
-            # Perform augmentations
-            for i in range(num_augmentations):
-                # Random rotation
-                angle = np.random.randint(-30, 30)  # Rotate between -30 and 30 degrees
-                rotated_image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-                cv2.imwrite(os.path.join(save_path, f"{image_name}_rotate_{i}.jpg"), rotated_image)
+    # Convert list of images to numpy array
+    images = np.array(images)
 
-                # Horizontal flip
-                flipped_image = cv2.flip(image, 1)  # Flip horizontally
-                cv2.imwrite(os.path.join(save_path, f"{image_name}_flip_{i}.jpg"), flipped_image)
+    # Calculate how many new images we need to generate
+    current_count = len(images)
+    needed_count = target_count - current_count
 
-                # Add noise (optional)
-                noisy_image = image + np.random.normal(0, 25, image.shape).astype(np.uint8)  # Add Gaussian noise
-                cv2.imwrite(os.path.join(save_path, f"{image_name}_noise_{i}.jpg"), noisy_image)
-
-                # Adjust brightness
-                brightness = np.random.randint(-50, 50)  # Adjust brightness by -50 to 50
-                brightness_adjusted = np.clip(image + brightness, 0, 255).astype(np.uint8)
-                cv2.imwrite(os.path.join(save_path, f"{image_name}_brightness_{i}.jpg"), brightness_adjusted)
-
-                # Adjust color (optional)
-                color_shift = np.random.randint(-50, 50, size=3)  # Shift color channels by -50 to 50
-                color_adjusted = np.clip(image + color_shift, 0, 255).astype(np.uint8)
-                cv2.imwrite(os.path.join(save_path, f"{image_name}_color_{i}.jpg"), color_adjusted)
+    # Perform augmentations
+    augmented_count = 0
+    for x, val in enumerate(
+            datagen.flow(images, batch_size=1, save_to_dir=save_path, save_prefix='aug', save_format='jpg')):
+        augmented_count += 1
+        if augmented_count >= needed_count:
+            break
 
 
 # Path to the folder containing emotion images
-emotion_images_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\img"
+emotion_images_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\preprocessed_img"
 
 # Path to the folder where augmented images will be saved
 save_folder = r"C:\Users\ASUS\PycharmProjects\CSC566GroupProject\src\augmented_img"

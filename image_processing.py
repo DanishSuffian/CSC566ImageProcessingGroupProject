@@ -3,67 +3,71 @@ import os
 import numpy as np
 
 
+def assess_image_quality(image):
+    # Example: Assess noise level (can be more sophisticated based on your needs)
+    mean_intensity = np.mean(image)
+    if mean_intensity < 50:
+        return 'low_noise'
+    elif mean_intensity > 200:
+        return 'high_noise'
+    else:
+        return 'medium_noise'
+
+
 def apply_noise_reduction(image):
-    # Gaussian Filtering
-    gaussian_filtered = cv2.GaussianBlur(image, (5, 5), 0)
-
-    # Median Filtering
-    median_filtered = cv2.medianBlur(gaussian_filtered, 5)
-
-    return median_filtered
+    # Example: Apply noise reduction based on assessed noise level
+    noise_level = assess_image_quality(image)
+    if noise_level == 'high_noise':
+        return cv2.medianBlur(image, 5)
+    elif noise_level == 'medium_noise':
+        return cv2.medianBlur(image, 3)
+    else:
+        return image
 
 
 def apply_contrast_enhancement(image):
-    # Histogram Equalization
-    if len(image.shape) == 2:  # Grayscale image
-        hist_equalized = cv2.equalizeHist(image)
-    else:  # Color image
-        ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
-        ycrcb[:, :, 0] = cv2.equalizeHist(ycrcb[:, :, 0])
-        hist_equalized = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
-
-    # Gamma Correction
-    gamma = 1.2
-    look_up_table = np.array([((i / 255.0) ** gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-    gamma_corrected = cv2.LUT(hist_equalized, look_up_table)
-
-    return gamma_corrected
+    # Example: Always apply contrast enhancement for demonstration
+    return cv2.equalizeHist(image)
 
 
-def apply_morphological_operations(image):
-    # Convert to grayscale if the image is colored
-    if len(image.shape) == 3:
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def apply_sharpening(image):
+    # Example: Apply sharpening based on image content
+    laplacian_var = cv2.Laplacian(image, cv2.CV_64F).var()
+    if laplacian_var < 100:  # Adjust threshold based on your image characteristics
+        return cv2.filter2D(image, -1, np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]))
     else:
-        gray_image = image
+        return image
 
-    # Erosion and Dilation
-    kernel = np.ones((5, 5), np.uint8)
-    eroded = cv2.erode(gray_image, kernel, iterations=1)
-    dilated = cv2.dilate(eroded, kernel, iterations=1)
-
-    # Opening and Closing
-    opening = cv2.morphologyEx(dilated, cv2.MORPH_OPEN, kernel)
-    closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-
-    return closing
-
+def apply_smoothing(image):
+    # Example: Apply Gaussian Blur for additional smoothing
+    return cv2.GaussianBlur(image, (5, 5), 0)
 
 def process_image(image_path, save_path, image_name):
     # Load the image
     image = cv2.imread(image_path)
 
-    # Apply noise reduction
-    noise_reduced = apply_noise_reduction(image)
+    # Convert to grayscale
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Apply contrast enhancement
-    contrast_enhanced = apply_contrast_enhancement(noise_reduced)
+    # Assess image quality
+    noise_level = assess_image_quality(gray_image)
 
-    # Apply morphological operations
-    final_processed = apply_morphological_operations(contrast_enhanced)
+    # Apply appropriate processing based on assessed quality
+    if noise_level == 'high_noise':
+        processed_image = apply_noise_reduction(gray_image)
+    else:
+        processed_image = gray_image  # No noise reduction needed for low to medium noise
+
+    # Apply contrast enhancement only for low quality images
+    if noise_level == 'low_noise':
+        processed_image = apply_contrast_enhancement(processed_image)
+
+    processed_image = apply_sharpening(processed_image)
+
+    processed_image = apply_smoothing(processed_image)
 
     # Save the final processed image
-    cv2.imwrite(os.path.join(save_path, f"{image_name}_processed.jpg"), final_processed)
+    cv2.imwrite(os.path.join(save_path, f"{image_name}_processed.jpg"), processed_image)
 
 
 def process_images_in_folder(emotion_folder, save_folder, limit=1000):
